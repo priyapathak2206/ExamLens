@@ -1,7 +1,17 @@
+import { useState, useCallback } from 'react'
 import Webcam from './components/Webcam'
 import './App.css'
 
 function App() {
+  const [faceStatus, setFaceStatus] = useState({
+    text: 'Camera Active',
+    type: 'loading',
+  })
+
+  const handleFaceStatusChange = useCallback((newStatus) => {
+    setFaceStatus(newStatus)
+  }, [])
+
   return (
     <div className="exam-container">
       {/* ExamLens Page Heading */}
@@ -15,14 +25,14 @@ function App() {
         <div className="proctor-card">
           <div className="card-top-bar">
             <span className="card-label">Proctoring Feed</span>
-            <div className="status-indicator">
+            <div className={`status-indicator status-${faceStatus.type}`}>
               <span className="status-dot"></span>
-              <span className="status-text">Camera Active</span>
+              <span className="status-text">{faceStatus.text}</span>
             </div>
           </div>
 
           <div className="card-body">
-            <Webcam />
+            <Webcam onFaceStatusChange={handleFaceStatusChange} />
           </div>
 
           <div className="card-footer">

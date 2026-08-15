@@ -79,7 +79,46 @@
   gap: 6px;
   font-size: 0.825rem;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.status-single {
   color: #10b981;
+}
+
+.status-single .status-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-green 2s infinite ease-in-out;
+}
+
+.status-none {
+  color: #f59e0b;
+}
+
+.status-none .status-dot {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: pulse-amber 1.5s infinite ease-in-out;
+}
+
+.status-multiple {
+  color: #ef4444;
+}
+
+.status-multiple .status-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulse-red 1s infinite ease-in-out;
+}
+
+.status-loading {
+  color: #9ca3af;
+}
+
+.status-loading .status-dot {
+  background-color: #9ca3af;
+  animation: pulse-gray 1.5s infinite ease-in-out;
 }
 
 .card-body {

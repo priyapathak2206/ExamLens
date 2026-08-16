@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from '@vladmandic/face-api';
 import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import { isValidProctoringFlag } from '../utils/proctoringFlags';
 import './Webcam.css';
 
 /**
@@ -45,6 +46,9 @@ export default function Webcam({ onFaceStatusChange, onFlagEvent, isExamInProgre
   // Log flag events with debouncing / cooldown to prevent console spam
   const emitFlagEvent = useCallback(
     (flagEvent) => {
+      if (!isValidProctoringFlag(flagEvent)) {
+        console.warn('[EXAMLENS PROCTORING FLAG] Schema validation notice:', flagEvent);
+      }
       const now = Date.now();
       const lastLogged = lastLoggedFlagsRef.current[flagEvent.type] || 0;
 

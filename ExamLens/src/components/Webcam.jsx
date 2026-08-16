@@ -105,14 +105,20 @@ export default function Webcam({ onFaceStatusChange }) {
         await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
 
         // Load Object Detection model (COCO-SSD) for phone detection
-        const cocoModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+        try {
+          const cocoModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+          if (isMounted) {
+            cocoModelRef.current = cocoModel;
+          }
+        } catch (cocoErr) {
+          console.warn('COCO-SSD model failed to load, phone detection disabled:', cocoErr);
+        }
 
         if (isMounted) {
-          cocoModelRef.current = cocoModel;
           setIsModelLoaded(true);
         }
       } catch (err) {
-        console.error('Failed to load AI models:', err);
+        console.error('Failed to load face detection model:', err);
         if (isMounted) {
           setError('Failed to load local AI detection models.');
         }
@@ -244,7 +250,7 @@ export default function Webcam({ onFaceStatusChange }) {
                 emitFlagEvent({
                   type: 'phone_detected',
                   confidence: Number(maxPhoneConfidence.toFixed(2)),
-                  rule: 'phone detected in webcam frame',
+                  rule: 'cell phone detected in webcam frame',
                   timestamp: new Date().toISOString(),
                 });
               }
@@ -314,12 +320,12 @@ export default function Webcam({ onFaceStatusChange }) {
 
   const statusInfo = getStatusInfo();
 
-  // Notify parent component of status changes
+  // Notify parent component of status changes only when text or type primitive values change
   useEffect(() => {
     if (onFaceStatusChange) {
       onFaceStatusChange(statusInfo);
     }
-  }, [statusInfo, onFaceStatusChange]);
+  }, [statusInfo.text, statusInfo.type, onFaceStatusChange]);
 
   if (error) {
     return (

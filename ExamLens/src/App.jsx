@@ -9,7 +9,12 @@ function App() {
   })
 
   const handleFaceStatusChange = useCallback((newStatus) => {
-    setFaceStatus(newStatus)
+    setFaceStatus((prev) => {
+      if (prev.text === newStatus.text && prev.type === newStatus.type) {
+        return prev;
+      }
+      return newStatus;
+    });
   }, [])
 
   return (

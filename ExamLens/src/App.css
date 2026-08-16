@@ -38,7 +38,9 @@
   width: 100%;
   max-width: 680px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
 }
 
 .proctor-card {
@@ -125,6 +127,15 @@
   animation: pulse-orange 1s infinite ease-in-out;
 }
 
+.status-tabswitch {
+  color: #f97316;
+}
+
+.status-tabswitch .status-dot {
+  background-color: #f97316;
+  box-shadow: 0 0 8px #f97316;
+  animation: pulse-orange 1s infinite ease-in-out;
+}
 
 .status-loading {
   color: #9ca3af;

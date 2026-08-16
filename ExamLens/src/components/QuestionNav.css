@@ -1,0 +1,135 @@
+.question-nav-card {
+  width: 100%;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: var(--shadow, 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01));
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: dark) {
+  .question-nav-card {
+    --card-bg: #1e1f29;
+    --border: #2e303e;
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.nav-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-h, #1f2937);
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .nav-title {
+    --text-h: #f3f4f6;
+  }
+}
+
+.nav-counter {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text, #6b7280);
+}
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.nav-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1.5px solid var(--border, #e5e7eb);
+  background-color: var(--btn-bg, #f9fafb);
+  color: var(--text-h, #374151);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .nav-btn {
+    --btn-bg: #14151b;
+    --border: #2e303e;
+    --text-h: #e5e7eb;
+  }
+}
+
+.nav-btn:hover {
+  transform: translateY(-1px);
+  border-color: #6366f1;
+}
+
+/* Current Question = Purple */
+.nav-current {
+  background-color: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+/* Answered Question = Green */
+.nav-answered {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+}
+
+/* Unanswered Question = Neutral */
+.nav-unanswered {
+  background-color: var(--btn-bg, #f9fafb);
+  border-color: var(--border, #e5e7eb);
+}
+
+.nav-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+  font-size: 0.75rem;
+  color: var(--text, #6b7280);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-current {
+  background-color: #6366f1;
+}
+
+.dot-answered {
+  background-color: #10b981;
+}
+
+.dot-unanswered {
+  background-color: var(--border, #d1d5db);
+}

@@ -9,7 +9,7 @@ import './Webcam.css';
  * 1. Face Detection (TinyFaceDetector via face-api.js)
  * 2. Mobile Phone Detection (COCO-SSD via TensorFlow.js)
  */
-export default function Webcam({ onFaceStatusChange }) {
+export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -19,6 +19,9 @@ export default function Webcam({ onFaceStatusChange }) {
   const [error, setError] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
+  const [isTabHidden, setIsTabHidden] = useState(false);
+  const [tabSwitchWarning, setTabSwitchWarning] = useState(false);
+  const tabSwitchTimerRef = useRef(null);
   const [detectionState, setDetectionState] = useState({
     faceCount: null,
     isPhoneDetected: false,
@@ -39,15 +42,21 @@ export default function Webcam({ onFaceStatusChange }) {
   }, []);
 
   // Log flag events with debouncing / cooldown to prevent console spam
-  const emitFlagEvent = useCallback((flagEvent) => {
-    const now = Date.now();
-    const lastLogged = lastLoggedFlagsRef.current[flagEvent.type] || 0;
+  const emitFlagEvent = useCallback(
+    (flagEvent) => {
+      const now = Date.now();
+      const lastLogged = lastLoggedFlagsRef.current[flagEvent.type] || 0;
 
-    if (now - lastLogged > FLAG_COOLDOWN_MS) {
-      lastLoggedFlagsRef.current[flagEvent.type] = now;
-      console.warn('[EXAMLENS PROCTORING FLAG]', flagEvent);
-    }
-  }, []);
+      if (now - lastLogged > FLAG_COOLDOWN_MS) {
+        lastLoggedFlagsRef.current[flagEvent.type] = now;
+        console.warn('[EXAMLENS PROCTORING FLAG]', flagEvent);
+        if (onFlagEvent) {
+          onFlagEvent(flagEvent);
+        }
+      }
+    },
+    [onFlagEvent]
+  );
 
   // 1. Initialize Webcam Stream
   useEffect(() => {
@@ -250,7 +259,7 @@ export default function Webcam({ onFaceStatusChange }) {
                 emitFlagEvent({
                   type: 'phone_detected',
                   confidence: Number(maxPhoneConfidence.toFixed(2)),
-                  rule: 'cell phone detected in webcam frame',
+                  rule: 'cell_phone_detected',
                   timestamp: new Date().toISOString(),
                 });
               }
@@ -294,12 +303,55 @@ export default function Webcam({ onFaceStatusChange }) {
     };
   }, [syncCanvasDimensions]);
 
+  // 4. Tab Switching Detection via Page Visibility API
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden || document.visibilityState === 'hidden') {
+        setIsTabHidden(true);
+        setTabSwitchWarning(true);
+        if (tabSwitchTimerRef.current) {
+          clearTimeout(tabSwitchTimerRef.current);
+          tabSwitchTimerRef.current = null;
+        }
+        emitFlagEvent({
+          type: 'tab_switch',
+          confidence: 1,
+          rule: 'document_hidden',
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        setIsTabHidden(false);
+        // Persist the "Tab switch detected" warning for 4 seconds after returning to tab
+        if (tabSwitchTimerRef.current) {
+          clearTimeout(tabSwitchTimerRef.current);
+        }
+        tabSwitchTimerRef.current = setTimeout(() => {
+          setTabSwitchWarning(false);
+          tabSwitchTimerRef.current = null;
+        }, 4000);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (tabSwitchTimerRef.current) {
+        clearTimeout(tabSwitchTimerRef.current);
+      }
+    };
+  }, [emitFlagEvent]);
+
   // Derive status text and type according to requirements:
+  // - If tab hidden or recent tab switch: "Tab switch detected"
   // - If phone detected: "Phone detected"
   // - If faceCount === 0: "No face detected"
   // - If faceCount === 1: "1 face detected"
   // - If faceCount > 1: "Multiple faces detected"
   const getStatusInfo = useCallback(() => {
+    if (isTabHidden || tabSwitchWarning) {
+      return { text: 'Tab switch detected', type: 'tabswitch' };
+    }
     if (!isModelLoaded) {
       return { text: 'Loading AI Models...', type: 'loading' };
     }
@@ -316,7 +368,7 @@ export default function Webcam({ onFaceStatusChange }) {
       return { text: '1 face detected', type: 'single' };
     }
     return { text: 'Multiple faces detected', type: 'multiple' };
-  }, [isModelLoaded, detectionState]);
+  }, [isTabHidden, tabSwitchWarning, isModelLoaded, detectionState]);
 
   const statusInfo = getStatusInfo();
 
@@ -337,24 +389,31 @@ export default function Webcam({ onFaceStatusChange }) {
   }
 
   return (
-    <div className="webcam-container" ref={containerRef}>
-      <div className={`webcam-status-badge badge-${statusInfo.type}`}>
-        <span className="status-dot"></span>
-        <span className="status-text">{statusInfo.text}</span>
+    <div className="webcam-wrapper">
+      <div className="webcam-container" ref={containerRef}>
+        <div className={`webcam-status-badge badge-${statusInfo.type}`}>
+          <span className="status-dot"></span>
+          <span className="status-text">{statusInfo.text}</span>
+        </div>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          onPlaying={() => setIsStreaming(true)}
+          onLoadedMetadata={syncCanvasDimensions}
+          className="webcam-video"
+        />
+        <canvas
+          ref={canvasRef}
+          className="webcam-canvas"
+        />
       </div>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        onPlaying={() => setIsStreaming(true)}
-        onLoadedMetadata={syncCanvasDimensions}
-        className="webcam-video"
-      />
-      <canvas
-        ref={canvasRef}
-        className="webcam-canvas"
-      />
+      {(isTabHidden || tabSwitchWarning) && (
+        <div className="webcam-sub-warning" role="alert">
+          <span>⚠️ Tab switch detected. Please return to the exam window.</span>
+        </div>
+      )}
     </div>
   );
 }

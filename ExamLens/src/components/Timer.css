@@ -1,0 +1,82 @@
+.timer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--card-bg, #ffffff);
+  border: 1px solid var(--border, #e5e7eb);
+  padding: 8px 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .timer-box {
+    --card-bg: #1e1f29;
+    --border: #2e303e;
+  }
+}
+
+.timer-icon {
+  color: #6366f1;
+  flex-shrink: 0;
+}
+
+.timer-text-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.timer-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text, #6b7280);
+}
+
+.timer-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-family: monospace, system-ui, sans-serif;
+  color: var(--text-h, #1f2937);
+  letter-spacing: 0.05em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .timer-value {
+    --text-h: #f3f4f6;
+  }
+}
+
+/* Warning State (< 5 minutes) */
+.timer-warning {
+  border-color: rgba(245, 158, 11, 0.5);
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+.timer-warning .timer-icon,
+.timer-warning .timer-value {
+  color: #f59e0b;
+}
+
+.timer-warning .timer-value {
+  animation: pulse-timer 1.5s infinite ease-in-out;
+}
+
+/* Danger / Time's Up State */
+.timer-danger {
+  border-color: rgba(239, 68, 68, 0.5);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.timer-danger .timer-icon,
+.timer-danger .timer-value {
+  color: #ef4444;
+}
+
+@keyframes pulse-timer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

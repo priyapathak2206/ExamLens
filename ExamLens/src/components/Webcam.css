@@ -88,9 +88,43 @@
   animation: pulse-orange 1s infinite ease-in-out;
 }
 
+.badge-tabswitch {
+  border-color: rgba(249, 115, 22, 0.6);
+  background-color: rgba(249, 115, 22, 0.18);
+  color: #f97316;
+}
+
+.badge-tabswitch .status-dot {
+  background-color: #f97316;
+  box-shadow: 0 0 8px #f97316;
+  animation: pulse-orange 1s infinite ease-in-out;
+}
+
 .badge-loading .status-dot {
   background-color: #9ca3af;
   animation: pulse-gray 1.5s infinite ease-in-out;
+}
+
+.webcam-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.webcam-sub-warning {
+  margin-top: 10px;
+  padding: 8px 14px;
+  background-color: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  border-radius: 8px;
+  color: #f97316;
+  font-size: 0.825rem;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .status-dot {

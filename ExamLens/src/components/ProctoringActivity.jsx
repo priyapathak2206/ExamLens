@@ -25,6 +25,14 @@ export default function ProctoringActivity({ events = [] }) {
           badgeClass: 'severity-high',
           icon: '⚠️',
         };
+      case 'fullscreen_exit':
+        return {
+          title: 'Fullscreen Exited',
+          description: 'Browser exited full-screen mode',
+          severity: 'high',
+          badgeClass: 'severity-high',
+          icon: '🖥️',
+        };
       case 'missing_face':
         return {
           title: 'Face Not Detected',

@@ -100,6 +100,18 @@
   animation: pulse-orange 1s infinite ease-in-out;
 }
 
+.badge-fullscreenexit {
+  border-color: rgba(249, 115, 22, 0.6);
+  background-color: rgba(249, 115, 22, 0.18);
+  color: #f97316;
+}
+
+.badge-fullscreenexit .status-dot {
+  background-color: #f97316;
+  box-shadow: 0 0 8px #f97316;
+  animation: pulse-orange 1s infinite ease-in-out;
+}
+
 .badge-loading .status-dot {
   background-color: #9ca3af;
   animation: pulse-gray 1.5s infinite ease-in-out;

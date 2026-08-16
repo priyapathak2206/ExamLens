@@ -137,6 +137,16 @@
   animation: pulse-orange 1s infinite ease-in-out;
 }
 
+.status-fullscreenexit {
+  color: #f97316;
+}
+
+.status-fullscreenexit .status-dot {
+  background-color: #f97316;
+  box-shadow: 0 0 8px #f97316;
+  animation: pulse-orange 1s infinite ease-in-out;
+}
+
 .status-loading {
   color: #9ca3af;
 }

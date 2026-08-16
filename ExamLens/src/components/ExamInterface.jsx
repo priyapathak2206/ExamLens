@@ -47,8 +47,27 @@ export default function ExamInterface() {
     });
   }, []);
 
+  // Helper to request browser fullscreen mode gracefully
+  const requestFullscreenMode = () => {
+    try {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {
+          // Graceful fallback if user gesture or browser policy rejects fullscreen
+        });
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    } catch {
+      // Graceful fallback
+    }
+  };
+
   // Start a fresh exam attempt with newly randomized questions & options
   const startNewExamAttempt = () => {
+    requestFullscreenMode();
     const randomizedQuestions = generateRandomizedExam();
     setQuestions(randomizedQuestions);
     setAnswers({});
@@ -320,6 +339,7 @@ export default function ExamInterface() {
               <Webcam
                 onFaceStatusChange={handleFaceStatusChange}
                 onFlagEvent={handleFlagEvent}
+                isExamInProgress={examState === 'in_progress'}
               />
             </div>
           </div>

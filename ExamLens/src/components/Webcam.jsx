@@ -9,7 +9,7 @@ import './Webcam.css';
  * 1. Face Detection (TinyFaceDetector via face-api.js)
  * 2. Mobile Phone Detection (COCO-SSD via TensorFlow.js)
  */
-export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
+export default function Webcam({ onFaceStatusChange, onFlagEvent, isExamInProgress = true }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -21,6 +21,7 @@ export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isTabHidden, setIsTabHidden] = useState(false);
   const [tabSwitchWarning, setTabSwitchWarning] = useState(false);
+  const [isFullscreenExited, setIsFullscreenExited] = useState(false);
   const tabSwitchTimerRef = useRef(null);
   const [detectionState, setDetectionState] = useState({
     faceCount: null,
@@ -342,8 +343,45 @@ export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
     };
   }, [emitFlagEvent]);
 
+  // 5. Fullscreen Exit Detection via Browser Fullscreen API
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+
+      if (!isFullscreen && isExamInProgress) {
+        setIsFullscreenExited(true);
+        emitFlagEvent({
+          type: 'fullscreen_exit',
+          confidence: 1,
+          rule: 'fullscreen_exited',
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        setIsFullscreenExited(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, [isExamInProgress, emitFlagEvent]);
+
   // Derive status text and type according to requirements:
   // - If tab hidden or recent tab switch: "Tab switch detected"
+  // - If fullscreen exited: "Fullscreen exited"
   // - If phone detected: "Phone detected"
   // - If faceCount === 0: "No face detected"
   // - If faceCount === 1: "1 face detected"
@@ -351,6 +389,9 @@ export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
   const getStatusInfo = useCallback(() => {
     if (isTabHidden || tabSwitchWarning) {
       return { text: 'Tab switch detected', type: 'tabswitch' };
+    }
+    if (isFullscreenExited) {
+      return { text: 'Fullscreen exited', type: 'fullscreenexit' };
     }
     if (!isModelLoaded) {
       return { text: 'Loading AI Models...', type: 'loading' };
@@ -368,7 +409,7 @@ export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
       return { text: '1 face detected', type: 'single' };
     }
     return { text: 'Multiple faces detected', type: 'multiple' };
-  }, [isTabHidden, tabSwitchWarning, isModelLoaded, detectionState]);
+  }, [isTabHidden, tabSwitchWarning, isFullscreenExited, isModelLoaded, detectionState]);
 
   const statusInfo = getStatusInfo();
 
@@ -412,6 +453,11 @@ export default function Webcam({ onFaceStatusChange, onFlagEvent }) {
       {(isTabHidden || tabSwitchWarning) && (
         <div className="webcam-sub-warning" role="alert">
           <span>⚠️ Tab switch detected. Please return to the exam window.</span>
+        </div>
+      )}
+      {isFullscreenExited && !isTabHidden && !tabSwitchWarning && (
+        <div className="webcam-sub-warning" role="alert">
+          <span>⚠️ Fullscreen exited. Please re-enter full screen mode.</span>
         </div>
       )}
     </div>

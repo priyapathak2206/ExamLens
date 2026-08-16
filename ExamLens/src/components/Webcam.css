@@ -77,6 +77,17 @@
   animation: pulse-red 1s infinite ease-in-out;
 }
 
+.badge-phone {
+  border-color: rgba(249, 115, 22, 0.6);
+  background-color: rgba(249, 115, 22, 0.18);
+}
+
+.badge-phone .status-dot {
+  background-color: #f97316;
+  box-shadow: 0 0 8px #f97316;
+  animation: pulse-orange 1s infinite ease-in-out;
+}
+
 .badge-loading .status-dot {
   background-color: #9ca3af;
   animation: pulse-gray 1.5s infinite ease-in-out;
@@ -99,6 +110,11 @@
 }
 
 @keyframes pulse-red {
+  0%, 100% { opacity: 1; transform: scale(1.1); }
+  50% { opacity: 0.4; transform: scale(0.9); }
+}
+
+@keyframes pulse-orange {
   0%, 100% { opacity: 1; transform: scale(1.1); }
   50% { opacity: 0.4; transform: scale(0.9); }
 }

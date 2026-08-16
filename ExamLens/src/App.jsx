@@ -17,7 +17,6 @@ function App() {
       {/* ExamLens Page Heading */}
       <header className="exam-header">
         <h1 className="exam-title">ExamLens</h1>
-        <p className="exam-subtitle">AI Proctoring System — Member 1 Detection Engine</p>
       </header>
 
       {/* Centered Proctoring Card */}

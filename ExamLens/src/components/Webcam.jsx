@@ -1,20 +1,31 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from '@vladmandic/face-api';
+import * as tf from '@tensorflow/tfjs';
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import './Webcam.css';
 
 /**
- * Webcam Component with Real-Time Browser Face Detection
- * Continuously detects faces using TinyFaceDetector and draws bounding boxes on canvas.
+ * Webcam Component with Dual AI Detection:
+ * 1. Face Detection (TinyFaceDetector via face-api.js)
+ * 2. Mobile Phone Detection (COCO-SSD via TensorFlow.js)
  */
 export default function Webcam({ onFaceStatusChange }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const cocoModelRef = useRef(null);
+  const lastLoggedFlagsRef = useRef({});
 
   const [error, setError] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
-  const [faceCount, setFaceCount] = useState(null);
+  const [detectionState, setDetectionState] = useState({
+    faceCount: null,
+    isPhoneDetected: false,
+    phoneConfidence: 0,
+  });
+
+  const FLAG_COOLDOWN_MS = 3000; // 3 seconds cooldown per flag type
 
   // Synchronize internal canvas resolution with natural video stream dimensions
   const syncCanvasDimensions = useCallback(() => {
@@ -24,6 +35,17 @@ export default function Webcam({ onFaceStatusChange }) {
         canvasRef.current.width = video.videoWidth;
         canvasRef.current.height = video.videoHeight;
       }
+    }
+  }, []);
+
+  // Log flag events with debouncing / cooldown to prevent console spam
+  const emitFlagEvent = useCallback((flagEvent) => {
+    const now = Date.now();
+    const lastLogged = lastLoggedFlagsRef.current[flagEvent.type] || 0;
+
+    if (now - lastLogged > FLAG_COOLDOWN_MS) {
+      lastLoggedFlagsRef.current[flagEvent.type] = now;
+      console.warn('[EXAMLENS PROCTORING FLAG]', flagEvent);
     }
   }, []);
 
@@ -70,28 +92,46 @@ export default function Webcam({ onFaceStatusChange }) {
     };
   }, []);
 
-  // 2. Load Minimum Face Detection Model (TinyFaceDetector)
+  // 2. Load Local AI Models (face-api TinyFaceDetector & TF.js COCO-SSD)
   useEffect(() => {
-    async function loadModel() {
+    let isMounted = true;
+
+    async function loadModels() {
       try {
-        // Load tiny face detector weights from local public directory
+        // Ensure TensorFlow.js backend is initialized
+        await tf.ready();
+
+        // Load Face Detection model from local public directory
         await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        setIsModelLoaded(true);
+
+        // Load Object Detection model (COCO-SSD) for phone detection
+        const cocoModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+
+        if (isMounted) {
+          cocoModelRef.current = cocoModel;
+          setIsModelLoaded(true);
+        }
       } catch (err) {
-        console.error('Failed to load face detection model:', err);
-        setError('Failed to load face detection AI model.');
+        console.error('Failed to load AI models:', err);
+        if (isMounted) {
+          setError('Failed to load local AI detection models.');
+        }
       }
     }
 
-    loadModel();
+    loadModels();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // 3. Continuous Face Detection Loop
+  // 3. Continuous Detection Loop (Faces + Mobile Phones)
   useEffect(() => {
     let animationFrameId = null;
     let isMounted = true;
 
-    const detectFaces = async () => {
+    const runDetections = async () => {
       if (!isMounted) return;
 
       const video = videoRef.current;
@@ -115,33 +155,47 @@ export default function Webcam({ onFaceStatusChange }) {
           }
 
           try {
-            const options = new faceapi.TinyFaceDetectorOptions({
+            // A. Face Detection
+            const faceOptions = new faceapi.TinyFaceDetectorOptions({
               inputSize: 224,
               scoreThreshold: 0.45,
             });
+            const faceDetections = await faceapi.detectAllFaces(video, faceOptions);
 
-            const detections = await faceapi.detectAllFaces(video, options);
+            // B. Object Detection (Phone)
+            let phoneDetections = [];
+            if (cocoModelRef.current) {
+              const predictions = await cocoModelRef.current.detect(video);
+              phoneDetections = predictions.filter(
+                (p) =>
+                  (p.class.toLowerCase() === 'cell phone' || p.class.toLowerCase() === 'phone') &&
+                  p.score >= 0.45
+              );
+            }
 
             if (isMounted) {
-              const displaySize = { width, height };
-              const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
               const ctx = canvas.getContext('2d');
               ctx.clearRect(0, 0, width, height);
 
-              const count = detections.length;
+              const faceCount = faceDetections.length;
+              const hasPhone = phoneDetections.length > 0;
+              const maxPhoneConfidence = hasPhone
+                ? Math.max(...phoneDetections.map((p) => p.score))
+                : 0;
 
-              // Draw bounding box around every detected face
-              resizedDetections.forEach((det) => {
+              // 1. Draw Face Bounding Boxes
+              const displaySize = { width, height };
+              const resizedFaceDetections = faceapi.resizeResults(faceDetections, displaySize);
+
+              resizedFaceDetections.forEach((det) => {
                 const { x, y, width: boxW, height: boxH } = det.box;
-                const isViolation = count > 1 || count === 0;
+                const isViolation = faceCount > 1 || faceCount === 0;
 
                 ctx.strokeStyle = isViolation ? '#ef4444' : '#10b981';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, boxW, boxH);
 
-                // Draw bounding box header label
-                const label = count === 1 ? '1 FACE DETECTED' : `${count} FACES DETECTED`;
+                const label = faceCount === 1 ? '1 FACE DETECTED' : `${faceCount} FACES DETECTED`;
                 ctx.fillStyle = isViolation ? '#ef4444' : '#10b981';
                 ctx.fillRect(x, Math.max(0, y - 22), Math.min(boxW, 140), 22);
 
@@ -150,7 +204,56 @@ export default function Webcam({ onFaceStatusChange }) {
                 ctx.fillText(label, x + 6, Math.max(14, y - 6));
               });
 
-              setFaceCount(count);
+              // 2. Draw Mobile Phone Bounding Boxes
+              phoneDetections.forEach((phone) => {
+                const [x, y, boxW, boxH] = phone.bbox;
+                const scorePercent = Math.round(phone.score * 100);
+
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 3.5;
+                ctx.strokeRect(x, y, boxW, boxH);
+
+                ctx.fillStyle = '#f97316';
+                ctx.fillRect(x, Math.max(0, y - 22), Math.min(boxW, 160), 22);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px system-ui, sans-serif';
+                ctx.fillText(`PHONE DETECTED (${scorePercent}%)`, x + 6, Math.max(14, y - 6));
+              });
+
+              // 3. Evaluate & Emit Flags with Cooldown
+              if (faceCount === 0) {
+                emitFlagEvent({
+                  type: 'missing_face',
+                  confidence: 1.0,
+                  rule: 'face_count === 0',
+                  timestamp: new Date().toISOString(),
+                });
+              } else if (faceCount > 1) {
+                const avgFaceConfidence =
+                  faceDetections.reduce((acc, d) => acc + d.score, 0) / faceCount;
+                emitFlagEvent({
+                  type: 'multiple_faces',
+                  confidence: Number(avgFaceConfidence.toFixed(2)),
+                  rule: 'face_count > 1',
+                  timestamp: new Date().toISOString(),
+                });
+              }
+
+              if (hasPhone) {
+                emitFlagEvent({
+                  type: 'phone_detected',
+                  confidence: Number(maxPhoneConfidence.toFixed(2)),
+                  rule: 'phone detected in webcam frame',
+                  timestamp: new Date().toISOString(),
+                });
+              }
+
+              setDetectionState({
+                faceCount,
+                isPhoneDetected: hasPhone,
+                phoneConfidence: maxPhoneConfidence,
+              });
             }
           } catch (err) {
             console.error('Detection frame error:', err);
@@ -159,15 +262,14 @@ export default function Webcam({ onFaceStatusChange }) {
       }
 
       if (isMounted) {
-        // Run detection every 100ms for smooth continuous detection
         setTimeout(() => {
-          animationFrameId = requestAnimationFrame(detectFaces);
+          animationFrameId = requestAnimationFrame(runDetections);
         }, 100);
       }
     };
 
     if (isModelLoaded && isStreaming) {
-      detectFaces();
+      runDetections();
     }
 
     return () => {
@@ -176,7 +278,7 @@ export default function Webcam({ onFaceStatusChange }) {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isModelLoaded, isStreaming]);
+  }, [isModelLoaded, isStreaming, emitFlagEvent]);
 
   // Sync canvas on window resize
   useEffect(() => {
@@ -186,35 +288,38 @@ export default function Webcam({ onFaceStatusChange }) {
     };
   }, [syncCanvasDimensions]);
 
-  // Derive status text according to requirements:
-  // 10. "No face detected" (count === 0)
-  // 11. "1 face detected" (count === 1)
-  // 12. "Multiple faces detected" (count > 1)
-  const getStatusInfo = () => {
+  // Derive status text and type according to requirements:
+  // - If phone detected: "Phone detected"
+  // - If faceCount === 0: "No face detected"
+  // - If faceCount === 1: "1 face detected"
+  // - If faceCount > 1: "Multiple faces detected"
+  const getStatusInfo = useCallback(() => {
     if (!isModelLoaded) {
-      return { text: 'Loading AI Model...', type: 'loading' };
+      return { text: 'Loading AI Models...', type: 'loading' };
     }
-    if (faceCount === null) {
+    if (detectionState.faceCount === null) {
       return { text: 'Detecting...', type: 'loading' };
     }
-    if (faceCount === 0) {
+    if (detectionState.isPhoneDetected) {
+      return { text: 'Phone detected', type: 'phone' };
+    }
+    if (detectionState.faceCount === 0) {
       return { text: 'No face detected', type: 'none' };
     }
-    if (faceCount === 1) {
+    if (detectionState.faceCount === 1) {
       return { text: '1 face detected', type: 'single' };
     }
     return { text: 'Multiple faces detected', type: 'multiple' };
-  };
+  }, [isModelLoaded, detectionState]);
 
   const statusInfo = getStatusInfo();
 
-  // Notify parent component of face status changes
+  // Notify parent component of status changes
   useEffect(() => {
     if (onFaceStatusChange) {
       onFaceStatusChange(statusInfo);
     }
   }, [statusInfo, onFaceStatusChange]);
-
 
   if (error) {
     return (
